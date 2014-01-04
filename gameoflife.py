@@ -22,7 +22,7 @@ import numpy
 
 from ola.ClientWrapper import ClientWrapper
 
-TICK_INTERVAL = 100  # in ms
+TICK_INTERVAL = 500  # in ms
 
 class Pixel(object):
   def __init__(self, x, y, data, size=8):

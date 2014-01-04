@@ -4,13 +4,13 @@ import array
 from ola.ClientWrapper import ClientWrapper
 
 wrapper = None
-loop_count = 0
+i = 0
 TICK_INTERVAL = 20  # in ms
 
 def SendDMXFrame():
-  global loop_count
-  data = array.array('B', [loop_count % 256, 0, 0] * 64)
-  loop_count += 1
+  global i
+  data = array.array('B', [i % 256, 0, 0] * 64)
+  i += 1
 
   wrapper.Client().SendDmx(1, data)
   wrapper.AddEvent(TICK_INTERVAL, SendDMXFrame)
