@@ -22,7 +22,7 @@ import numpy
 
 from ola.ClientWrapper import ClientWrapper
 
-TICK_INTERVAL = 500  # in ms
+TICK_INTERVAL = 250  # in ms
 
 class Pixel(object):
   def __init__(self, x, y, data, size=8):
@@ -47,18 +47,20 @@ class Pixel(object):
 class Game(object):
   def __init__(self, size):
     self._size = size
+    self._zeros = numpy.zeros((size, size))
     self.InitBoard(size)
     self._wrapper = ClientWrapper()
     self._data = array.array('B', [0] * (size * size * 3))
     self._pixels = [ self.GenList(y) for y in xrange(size) ]
 
   def InitBoard(self, size):
-    def BoolToInit(b):
+    def BoolToInt(b):
       if b:
         return 1
       else:
         return 0
-    func = numpy.vectorize(BoolToInit)
+    self._counter = 0
+    func = numpy.vectorize(BoolToInt)
     self._board = func(numpy.random.random((size, size)) > 0.75)
 
   def Run(self):
@@ -89,15 +91,45 @@ class Game(object):
     pixel.Green(g)
     pixel.Blue(b)
 
+  def CapAges(b):
+    if b >= 8:
+      return 8
+    else:
+      return b
+
+  CapAgesF = numpy.vectorize(CapAges)
+
   def SendDMXFrame(self):
-    self._wrapper.AddEvent(TICK_INTERVAL, self.SendDMXFrame)
 
     for x in xrange(self._size):
       for y in xrange(self._size):
         self.SetCell(self._pixels[x][y], self._board[x][y])
 
+    self._counter += 1
     self._wrapper.Client().SendDmx(1, self._data)
-    self._board = self.Evolve()
+
+    if numpy.array_equal(self._board, self._zeros):
+      print 'reset due to blank, counter was %d' % self._counter
+      self.InitBoard(self._size)
+      self._wrapper.AddEvent(2000, self.SendDMXFrame)
+      return
+
+    new_board = self.Evolve()
+    if numpy.array_equal(self.CapAgesF(self._board),
+                         self.CapAgesF(new_board)):
+      print 'reset due to static, counter was %d' % self._counter
+      self.InitBoard(self._size)
+      self._wrapper.AddEvent(2000, self.SendDMXFrame)
+      return
+
+    if self._counter > 200:
+      print 'reset due to counter'
+      self.InitBoard(self._size)
+      self._wrapper.AddEvent(2000, self.SendDMXFrame)
+      return
+
+    self._board = new_board
+    self._wrapper.AddEvent(TICK_INTERVAL, self.SendDMXFrame)
 
 
 game = Game(8)
